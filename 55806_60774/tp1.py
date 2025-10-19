@@ -415,7 +415,7 @@ if __name__ == "__main__":
 
     # Find similar groups based on histograms
     print("\n Finding similar image groups ")
-    groups = find_similar_groups(resized_images, threshold=0.3)
+    groups = find_similar_groups(resized_images, "chi", threshold=0.3)
     print(f"Found {len(groups)} similar groups")
 
     # Saving similar groups
