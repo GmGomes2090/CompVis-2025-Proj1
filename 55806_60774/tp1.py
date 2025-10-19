@@ -2,11 +2,11 @@
 ## Computer Vision 2025-2026 - NOVA FCT
 ## Assignment 1
 ##
-## Student 1
-## Student 2
+## Tomas Santos 55806
+## Goncalo Gomes 60774
 ## 
 ###############################################################################
-
+import cv2
 import cv2 as cv
 import numpy as np
 import os
@@ -95,16 +95,32 @@ def calculate_histogram(image):
     Returns:
         float: Distance value
     """
-def histogram_distance(hist1, hist2):
-  
-    # Bhattacharyya distance
-    distance = cv.compareHist(hist1, hist2, cv.HISTCMP_BHATTACHARYYA)
-    
-    # Chi-Square distance (uncomment to use)
-    # distance = cv.compareHist(hist1, hist2, cv.HISTCMP_CHISQR)
-    
-    return distance
-def find_similar_groups(resized_images, threshold=0.3):
+
+def my_chi_square(hist1, hist2):
+    print("MY CHI-SQUARE")
+    #print(hist1)
+
+    non_zero = 1e-9
+
+    hist_array1 = np.asarray(hist1)
+    hist_array2 = np.asarray(hist2)
+
+    chi_square = 0.5 * np.sum( (hist_array1 - hist_array2) ** 2 / (hist_array1 + hist_array2 + non_zero))
+    print(f"CHI_SQAURE = {chi_square}")
+    return chi_square
+
+def histogram_distance(hist1, hist2, selection):
+    if selection == "btc":
+        # Bhattacharyya distance
+        return cv.compareHist(hist1, hist2, cv.HISTCMP_BHATTACHARYYA)
+    if selection == "chi":
+        # Chi-Square distance
+        return cv.compareHist(hist1, hist2, cv.HISTCMP_CHISQR)
+    if selection == "my_chi":
+        # Custom Chi-Square implementation
+        return my_chi_square(hist1, hist2)
+    raise Exception("Invalid algorythm selection")
+def find_similar_groups(resized_images, selection, threshold=0.3):
     """
     Group similar images based on histogram comparison.
     Assumes images are in chronological order.
@@ -130,7 +146,7 @@ def find_similar_groups(resized_images, threshold=0.3):
         curr_hist = calculate_histogram(image)
         
         # Compare with previous image
-        dist = histogram_distance(prev_hist, curr_hist)
+        dist = histogram_distance(prev_hist, curr_hist, selection)
         
         print(f"Distance between image {resized_images[i-1][0]} and image {filename}: {dist:.4f}")
         
@@ -375,7 +391,10 @@ def process_similar_folders(output_dir):
         save_histogram_visualization(original_group, folder_path)
         
         print(f" {folder_name} processed successfully")
-
+# SECTION 6: MOPS DESCRIPTOR
+def my_track_points(img):
+    features = cv2.goodFeaturesToTrack(img)
+    return
 
 
  
@@ -383,23 +402,26 @@ if __name__ == "__main__":
     print("Assignment 1")
     
      # Define directories of images
-    input_dir = "input"
-    output_dir = "output"
+    input_dir = "../input"
+    output_dir = "../output"
     
-    # Create output directory if it doesnt exist
+    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     #  Load and resize images
     print("\n Loading and resizing images ")
     resized_images = load_and_resize_images(input_dir)
-    print(f"Loaded {len(resized_images)} images")     
+    print(f"Loaded {len(resized_images)} images")
+
     # Find similar groups based on histograms
     print("\n Finding similar image groups ")
     groups = find_similar_groups(resized_images, threshold=0.3)
     print(f"Found {len(groups)} similar groups")
+
     # Saving similar groups
     print("\n Saving similar groups ")
     save_similar_groups(groups, output_dir)
+
     # Processing similar folders
     print("\n Processing similar folders...")
     process_similar_folders(output_dir)
