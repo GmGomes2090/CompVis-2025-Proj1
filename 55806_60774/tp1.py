@@ -97,16 +97,20 @@ def calculate_histogram(image):
     """
 
 def my_chi_square(hist1, hist2):
-    print("MY CHI-SQUARE")
+    # print("MY CHI-SQUARE")
     #print(hist1)
 
-    non_zero = 1e-9
+    non_zero = 1e-11
 
-    hist_array1 = np.asarray(hist1)
-    hist_array2 = np.asarray(hist2)
+    # print(hist1)
 
-    chi_square = 0.5 * np.sum( (hist_array1 - hist_array2) ** 2 / (hist_array1 + hist_array2 + non_zero))
-    print(f"CHI_SQAURE = {chi_square}")
+    # hist_array1 = np.asarray(hist1)
+    # hist_array2 = np.asarray(hist2)
+    #
+    # print(hist_array1)
+
+    chi_square = 0.5 * np.sum( (hist1 - hist2) ** 2 / (hist1 + hist2 + non_zero))
+    # print(f"CHI_SQAURE = {chi_square}")
     return chi_square
 
 def histogram_distance(hist1, hist2, selection):
@@ -415,7 +419,7 @@ if __name__ == "__main__":
 
     # Find similar groups based on histograms
     print("\n Finding similar image groups ")
-    groups = find_similar_groups(resized_images, threshold=0.3)
+    groups = find_similar_groups(resized_images, "btc", threshold=0.3)
     print(f"Found {len(groups)} similar groups")
 
     # Saving similar groups
@@ -425,3 +429,10 @@ if __name__ == "__main__":
     # Processing similar folders
     print("\n Processing similar folders...")
     process_similar_folders(output_dir)
+
+    with open(f"{input_dir}/groundtruth.json") as file:
+        data = json.load(file)
+
+    similarities = {}
+    for i in data:
+        similarities[data[i]["query"]] = data[i]["similar"]
