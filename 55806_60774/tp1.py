@@ -395,12 +395,10 @@ def process_similar_folders(output_dir):
         save_histogram_visualization(original_group, folder_path)
         
         print(f" {folder_name} processed successfully")
-<<<<<<< Updated upstream
 # SECTION 6: MOPS DESCRIPTOR
 def my_track_points(img):
     features = cv2.goodFeaturesToTrack(img)
     return
-=======
 
     """
     Find keypoints using goodFeaturesToTrack (Harris corner detector ).
@@ -847,19 +845,17 @@ def draw_mops_matches(img1, kp1, img2, kp2, matches, max_draw=50):
 
  
 # COMPARE IMAGES AND STATS
+def compare_with_sift(image1, image2):
     """
-    Compare two images using SIFT and return matches.
+    Compare two images using SIFT and return matches and keypoints.
     
     Args:
         image1: First image
         image2: Second image
     
     Returns:
-        Number of good matches
-    """ 
-
-def compare_with_sift(image1, image2):
-   
+        tuple: (good_matches, kp1, kp2) or ([], None, None) if failed
+    """
     gray1 = cv.cvtColor(image1, cv.COLOR_BGR2GRAY)
     gray2 = cv.cvtColor(image2, cv.COLOR_BGR2GRAY)
     
@@ -871,7 +867,7 @@ def compare_with_sift(image1, image2):
     kp2, des2 = sift.detectAndCompute(gray2, None)
     
     if des1 is None or des2 is None:
-        return 0
+        return [], None, None
     
     # Match descriptors using BFMatcher
     bf = cv.BFMatcher()
@@ -885,25 +881,30 @@ def compare_with_sift(image1, image2):
             if m.distance < 0.75 * n.distance:
                 good_matches.append(m)
     
-    return len(good_matches)
+    return good_matches, kp1, kp2
 
-"""
+
+def find_equal_images(output_dir, match_threshold=50):
+    """
     Find very similar (equal) images in each similar folder using SIFT.
+    Saves match visualizations as equal-X.jpg files.
     
     Args:
         output_dir: Output directory
         match_threshold: Minimum matches to consider images equal
     """
-def find_equal_images(output_dir, match_threshold=50):
-    
     similar_folders = sorted([f for f in os.listdir(output_dir) 
                              if f.startswith('similar-')])
     
     for folder_name in similar_folders:
         folder_path = os.path.join(output_dir, folder_name)
         
-        # Load all images
+        # Load all images EXCLUDE histogram and equal files
         image_files = sorted(glob.glob(os.path.join(folder_path, "*.jpg")))
+        image_files = [f for f in image_files 
+                      if 'histogram' not in os.path.basename(f).lower() 
+                      and 'equal' not in os.path.basename(f).lower()]
+        
         if len(image_files) < 2:
             continue
         
@@ -914,39 +915,92 @@ def find_equal_images(output_dir, match_threshold=50):
         
         equal_count = 0
         
+        print(f"\n  Checking {folder_name} for equal images...")
+        
         # Compare each image with the first one
         for i in range(1, len(image_files)):
             img = cv.imread(image_files[i])
             if img is None:
                 continue
             
-            num_matches = compare_with_sift(ref_img, img)
+            # Compare using SIFT returns matches and keypoints
+            good_matches, kp1, kp2 = compare_with_sift(ref_img, img)
+            num_matches = len(good_matches)
             
+            # If enough good matches, images are considered equal
             if num_matches >= match_threshold:
-                # Images are very similar - save visualization
-                # TODO: Save match visualization as equal-X.jpg
-                print(f"  Found equal images: {os.path.basename(image_files[0])} and {os.path.basename(image_files[i])} ({num_matches} matches)")
+                print(f" Equal: {os.path.basename(image_files[0])} ≈ {os.path.basename(image_files[i])} ({num_matches} matches)")
+                
+                # Draw matches visualization
+                # Limit to best 50 matches for clarity
+                matches_to_draw = sorted(good_matches, key=lambda x: x.distance)[:50]
+                
+                match_img = cv.drawMatches(
+                    ref_img, kp1,           # First image and keypoints
+                    img, kp2,               # Second image and keypoints
+                    matches_to_draw,        # Matches to draw
+                    None,                   # Output image  
+                    flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+                )
+                
+                # Add text labels
+                cv.putText(match_img, 
+                          f'{num_matches} matches (threshold: {match_threshold})', 
+                          (10, 30), 
+                          cv.FONT_HERSHEY_SIMPLEX, 
+                          1, 
+                          (0, 255, 0),
+                          2)
+                
+                cv.putText(match_img, 
+                          os.path.basename(image_files[0]), 
+                          (10, 60), 
+                          cv.FONT_HERSHEY_SIMPLEX, 
+                          0.7, 
+                          (255, 255, 255),
+                          2)
+                
+                cv.putText(match_img, 
+                          os.path.basename(image_files[i]), 
+                          (ref_img.shape[1] + 10, 60), 
+                          cv.FONT_HERSHEY_SIMPLEX, 
+                          0.7, 
+                          (255, 255, 255),
+                          2)
+                
+                # Save match visualization as equal-X.jpg
+                equal_output_path = os.path.join(folder_path, f'equal-{equal_count}.jpg')
+                cv.imwrite(equal_output_path, match_img)
+                
+                print(f"  Saved: {equal_output_path}")
+                
                 equal_count += 1
+        
+        if equal_count > 0:
+            print(f"  → Found {equal_count} equal image pair(s) in {folder_name}")
+        else:
+            print(f"  → No equal images found in {folder_name}")
 
-"""
+ 
+
+def load_groundtruth(input_dir):
+    """
     Load ground truth data from JSON file.
     
     Returns:
         dict: Ground truth data
     """
-def load_groundtruth(input_dir):
-    
     gt_path = os.path.join(input_dir, 'groundtruth.json')
     if os.path.exists(gt_path):
         with open(gt_path, 'r') as f:
             return json.load(f)
     return {}
-"""
-    Print statistics for each similar folder and overall.
-    """
+
 
 def print_statistics(output_dir, input_dir):
-    
+    """
+    Print statistics for each similar folder and overall.
+    """
     similar_folders = sorted([f for f in os.listdir(output_dir) 
                              if f.startswith('similar-')])
     
@@ -958,7 +1012,7 @@ def print_statistics(output_dir, input_dir):
     for folder_name in similar_folders:
         folder_path = os.path.join(output_dir, folder_name)
         
-        # Count images in folder EXCLUDE histogram and equal files
+        # Count images in folder - EXCLUDE histogram and equal files
         image_files = glob.glob(os.path.join(folder_path, "*.jpg"))
         # Filter out histogram and equal files
         image_files = [f for f in image_files 
@@ -1003,7 +1057,6 @@ def print_statistics(output_dir, input_dir):
         total_precision = 0.0
     
     print(f"\nTOTAL number of images: {total_images} ground-truth: {total_groundtruth} precision: {total_precision:.3f}")
->>>>>>> Stashed changes
 
 
  
@@ -1011,8 +1064,8 @@ if __name__ == "__main__":
     print("Assignment 1")
     
      # Define directories of images
-    input_dir = "../input"
-    output_dir = "../output"
+    input_dir = "input"
+    output_dir = "output"
     
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -1033,16 +1086,8 @@ if __name__ == "__main__":
 
     # Processing similar folders
     print("\n Processing similar folders...")
-<<<<<<< Updated upstream
     process_similar_folders(output_dir)
-
-    with open(f"{input_dir}/groundtruth.json") as file:
-        data = json.load(file)
-
-    similarities = {}
-    for i in data:
-        similarities[data[i]["query"]] = data[i]["similar"]
-=======
+ 
     process_similar_folders(output_dir) 
     print("\n Creating descriptor comparison...")
     create_my_match_comparison(output_dir) 
@@ -1054,4 +1099,3 @@ if __name__ == "__main__":
     print("\n Final Statistics:")
     print("-" * 80)
     print_statistics(output_dir, input_dir)
->>>>>>> Stashed changes
