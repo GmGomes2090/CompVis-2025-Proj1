@@ -1012,7 +1012,7 @@ def print_statistics(output_dir, input_dir):
     for folder_name in similar_folders:
         folder_path = os.path.join(output_dir, folder_name)
         
-        # Count images in folder - EXCLUDE histogram and equal files
+        # Count images in folder EXCLUDE histogram and equal files
         image_files = glob.glob(os.path.join(folder_path, "*.jpg"))
         # Filter out histogram and equal files
         image_files = [f for f in image_files 
@@ -1021,8 +1021,7 @@ def print_statistics(output_dir, input_dir):
         
         num_images = len(image_files)
         
-        # Get ground truth count (you need to map folder to ground truth)
-        # This is simplified - you'll need to implement proper matching
+        
         gt_count = num_images  # Placeholder
         
         # Calculate precision
